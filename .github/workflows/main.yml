@@ -17,24 +17,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20' # Usamos la 20 que es más estable para Angular nuevo
+          node-version: '20'
 
-      - name: Install dependencies
+      - name: Install and Build
         run: |
-          # Buscamos el package.json ignorando la carpeta node_modules
-          PACKAGE_JSON=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
-          if [ -z "$PACKAGE_JSON" ]; then
-            echo "ERROR: No se encuentra package.json. Revisa que hayas subido el proyecto Angular."
-            exit 1
-          fi
-          cd $(dirname "$PACKAGE_JSON")
-          npm install --no-audit --no-fund
-
-      - name: Build project
-        run: |
-          PACKAGE_JSON=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
-          cd $(dirname "$PACKAGE_JSON")
-          # Forzamos el build ignorando errores de tipos si los hubiera
+          # Buscamos la carpeta donde está el package.json
+          PACKAGE_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
+          PROJECT_DIR=$(dirname "$PACKAGE_PATH")
+          echo "Entrando en la carpeta: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          
+          # Instalamos ignorando el package-lock para evitar el error de 'Invalid Version'
+          npm install --no-package-lock
+          
+          # Ejecutamos el build
           npm run build -- --configuration production
 
       - name: Deploy to VPS
@@ -43,6 +39,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Usamos un patrón más flexible para encontrar los archivos compilados
           source: "**/dist/**/browser/*"
           target: "/var/www/html/examen"
           strip_components: 4
