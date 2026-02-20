@@ -17,23 +17,25 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20' # Usamos la 20 que es más estable para Angular nuevo
 
       - name: Install dependencies
         run: |
-          if [ -d "proyecto-examen" ]; then
-            cd proyecto-examen && npm ci
-          else
-            npm ci
+          # Buscamos el package.json ignorando la carpeta node_modules
+          PACKAGE_JSON=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$PACKAGE_JSON" ]; then
+            echo "ERROR: No se encuentra package.json. Revisa que hayas subido el proyecto Angular."
+            exit 1
           fi
+          cd $(dirname "$PACKAGE_JSON")
+          npm install --no-audit --no-fund
 
       - name: Build project
         run: |
-          if [ -d "proyecto-examen" ]; then
-            cd proyecto-examen && npm run build -- --configuration production
-          else
-            npm run build -- --configuration production
-          fi
+          PACKAGE_JSON=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
+          cd $(dirname "$PACKAGE_JSON")
+          # Forzamos el build ignorando errores de tipos si los hubiera
+          npm run build -- --configuration production
 
       - name: Deploy to VPS
         uses: appleboy/scp-action@master
@@ -41,6 +43,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "dist/**/browser/*"
+          source: "**/dist/**/browser/*"
           target: "/var/www/html/examen"
           strip_components: 4
