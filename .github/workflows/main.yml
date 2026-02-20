@@ -1,0 +1,46 @@
+name: Deploy Angular to IONOS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          if [ -d "proyecto-examen" ]; then
+            cd proyecto-examen && npm ci
+          else
+            npm ci
+          fi
+
+      - name: Build project
+        run: |
+          if [ -d "proyecto-examen" ]; then
+            cd proyecto-examen && npm run build -- --configuration production
+          else
+            npm run build -- --configuration production
+          fi
+
+      - name: Deploy to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "dist/**/browser/*"
+          target: "/var/www/html/examen"
+          strip_components: 4
